@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Dati locali (DB e upload non vanno versionati)
+data/*.db
+data/uploads/*
+!data/uploads/.gitkeep
+
+# IDE
+.idea/
+.streamlit/secrets.toml
+
+# Test / cache
+.pytest_cache/
+.coverage

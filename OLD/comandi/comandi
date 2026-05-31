@@ -1,0 +1,5 @@
+Prima esecuzione? Inizializza il database con i dati di esempio:
+python -m database.init_db
+
+per lanciare la piattaforma:
+python -m streamlit run Home.py

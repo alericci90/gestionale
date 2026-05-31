@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pip *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(Select-String *)",
+      "PowerShell(New-NetFirewallRule *)"
+    ]
+  }
+}

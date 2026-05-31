@@ -1,0 +1,9 @@
+# --- Runtime ---
+streamlit==1.40.2
+SQLAlchemy==2.0.36
+pandas==2.2.3
+qrcode[pil]==8.0
+pyngrok==7.2.3
+
+# --- Sviluppo / test ---
+pytest==8.3.4
