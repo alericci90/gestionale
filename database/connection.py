@@ -12,6 +12,7 @@ e rende banale, in futuro, sostituire SQLite con PostgreSQL (basta cambiare DB_U
 """
 from __future__ import annotations
 
+import ssl
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -29,8 +30,12 @@ class Base(DeclarativeBase):
 
 _is_sqlite = DB_URL.startswith("sqlite")
 
-# check_same_thread è necessario solo per SQLite.
-_connect_args = {"check_same_thread": False} if _is_sqlite else {}
+if _is_sqlite:
+    _connect_args = {"check_same_thread": False}
+else:
+    # Supabase (e PostgreSQL in generale) richiede SSL.
+    _ssl_ctx = ssl.create_default_context()
+    _connect_args = {"ssl_context": _ssl_ctx}
 
 engine: Engine = create_engine(
     DB_URL,
