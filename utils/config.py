@@ -41,6 +41,8 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # Database: PostgreSQL su cloud, SQLite in locale
 # --------------------------------------------------------------------------- #
 _db_url_env = _secret("DATABASE_URL")
+if _db_url_env and _db_url_env.startswith("postgresql://"):
+    _db_url_env = _db_url_env.replace("postgresql://", "postgresql+pg8000://", 1)
 DB_URL: str = _db_url_env if _db_url_env else f"sqlite:///{DB_PATH}"
 
 # --------------------------------------------------------------------------- #

@@ -5,7 +5,7 @@ pandas==2.2.3
 qrcode[pil]==8.0
 pyngrok==7.2.3
 supabase==2.15.1
-psycopg2-binary==2.9.10
+pg8000==1.31.2
 
 # --- Sviluppo / test ---
 pytest==8.3.4
