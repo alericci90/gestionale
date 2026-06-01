@@ -45,6 +45,19 @@ def _salva_su_supabase(nome_file: str, contenuto: bytes) -> str:
     return client.storage.from_(SUPABASE_BUCKET).get_public_url(nome_univoco)
 
 
+def elimina_file_cloud(url: str) -> None:
+    """Elimina un file da Supabase Storage dato il suo URL pubblico."""
+    try:
+        marker = f"/object/public/{SUPABASE_BUCKET}/"
+        idx = url.find(marker)
+        if idx == -1:
+            return
+        percorso = url[idx + len(marker):]
+        _client_supabase().storage.from_(SUPABASE_BUCKET).remove([percorso])
+    except Exception:
+        pass
+
+
 def salva_file(nome_file: str, contenuto: bytes) -> str:
     """Salva il file e ritorna il riferimento (percorso locale o URL cloud)."""
     if _usa_cloud():

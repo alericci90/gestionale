@@ -313,6 +313,34 @@ def _pannello_dettaglio(records: list[dict]) -> None:
         except Exception as e:  # pragma: no cover
             st.error(f"Errore durante il salvataggio: {e}")
 
+    st.divider()
+    st.markdown("#### Elimina pratica")
+    chiave_confirm = f"confirm_elimina_{pratica_id}"
+    if not st.session_state.get(chiave_confirm):
+        if st.button("🗑️ Elimina pratica", type="secondary", use_container_width=True, key=f"btn_elimina_{pratica_id}"):
+            st.session_state[chiave_confirm] = True
+            st.rerun()
+    else:
+        st.warning(
+            f"Stai per eliminare definitivamente la pratica **{det['numero']}** "
+            "e tutti i documenti allegati. L'operazione è irreversibile."
+        )
+        col_si, col_no = st.columns(2)
+        with col_si:
+            if st.button("✅ Sì, elimina", type="primary", use_container_width=True, key=f"btn_si_{pratica_id}"):
+                try:
+                    with get_session() as session:
+                        pratica_service.elimina_pratica(session, pratica_id)
+                    st.session_state.pop(chiave_confirm, None)
+                    st.success(f"Pratica {det['numero']} eliminata.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Errore durante l'eliminazione: {e}")
+        with col_no:
+            if st.button("❌ Annulla", use_container_width=True, key=f"btn_no_{pratica_id}"):
+                st.session_state.pop(chiave_confirm, None)
+                st.rerun()
+
 
 # --------------------------------------------------------------------------- #
 # Entry point

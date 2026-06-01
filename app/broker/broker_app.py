@@ -97,16 +97,16 @@ def _file_a_documento(uploaded, tipo: TipoDocumento):
     }
 
 
-def _input_documento(label: str, key: str):
+def _input_documento(label: str, key: str, v: int):
     """File uploader + fotocamera: restituisce il primo input non nullo."""
     tab_file, tab_cam = st.tabs(["📁 Carica file", "📷 Fotocamera"])
     with tab_file:
         da_file = st.file_uploader(
             label, type=["pdf", "jpg", "jpeg", "png"],
-            key=f"{key}_file", label_visibility="collapsed",
+            key=f"{key}_file_{v}", label_visibility="collapsed",
         )
     with tab_cam:
-        da_camera = st.camera_input("Scatta una foto", key=f"{key}_cam")
+        da_camera = st.camera_input("Scatta una foto", key=f"{key}_cam_{v}")
     return da_file or da_camera
 
 
@@ -114,6 +114,15 @@ def render() -> None:
     setup_page("Inserimento Pratica · Broker", "📝")
     st.title("📝 Inserimento Nuova Pratica")
     st.caption("Compila i dati della pratica assicurativa e invia alla segreteria.")
+
+    if "form_v" not in st.session_state:
+        st.session_state.form_v = 0
+    v = st.session_state.form_v
+
+    if st.session_state.get("pratica_inviata"):
+        st.success(f"✅ Pratica **{st.session_state.pratica_inviata}** inviata correttamente alla segreteria!")
+        st.balloons()
+        del st.session_state["pratica_inviata"]
 
     broker = _carica_broker()
     if not broker:
@@ -222,11 +231,11 @@ def render() -> None:
 
             st.divider()
             doc_identita = _input_documento(
-                "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita"
+                "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita", v
             )
-            doc_cf = _input_documento("Codice Fiscale (tessera)", "cf")
-            doc_visura = _input_documento("Visura (se azienda)", "visura")
-            doc_libretto = _input_documento("Libretto (se polizza Auto)", "libretto")
+            doc_cf = _input_documento("Codice Fiscale (tessera)", "cf", v)
+            doc_visura = _input_documento("Visura (se azienda)", "visura", v)
+            doc_libretto = _input_documento("Libretto (se polizza Auto)", "libretto", v)
 
             for up, tipo in (
                 (doc_identita, TipoDocumento.CARTA_IDENTITA),
@@ -350,8 +359,12 @@ def render() -> None:
             with get_session() as session:
                 pratica = pratica_service.crea_pratica(session, dati)
                 numero = pratica.numero_pratica
-            st.success(f"✅ Pratica **{numero}** inviata correttamente alla segreteria!")
-            st.balloons()
+            # Reset del form: cancella upload session e incrementa versione widget.
+            for k in ("docs_remoti", "upload_sid", "tunnel_url"):
+                st.session_state.pop(k, None)
+            st.session_state.pratica_inviata = numero
+            st.session_state.form_v += 1
+            st.rerun()
         except ValidazionePraticaError as e:
             st.error("Impossibile inviare la pratica. Correggi gli errori seguenti:")
             for err in e.errori:

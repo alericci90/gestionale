@@ -235,6 +235,25 @@ def assegna_operatore(
     return pratica
 
 
+def elimina_pratica(session: Session, pratica_id: int) -> None:
+    """Elimina una pratica e tutti i suoi documenti (inclusi file su Supabase Storage)."""
+    from services import documento_service as doc_svc
+    pratica = session.get(Pratica, pratica_id)
+    if pratica is None:
+        raise ValueError(f"Pratica #{pratica_id} non trovata.")
+    for doc in list(pratica.documenti):
+        if doc.percorso and doc.percorso.startswith("http"):
+            doc_svc.elimina_file_cloud(doc.percorso)
+        elif doc.percorso:
+            from pathlib import Path as _Path
+            try:
+                _Path(doc.percorso).unlink(missing_ok=True)
+            except Exception:
+                pass
+    session.delete(pratica)
+    session.flush()
+
+
 def aggiorna_note(session: Session, pratica_id: int, note: str) -> Pratica:
     pratica = session.get(Pratica, pratica_id)
     if pratica is None:
