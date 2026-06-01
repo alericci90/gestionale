@@ -159,39 +159,41 @@ def render() -> None:
             "Se polizza Auto: Libretto."
         )
         with st.expander("📎 Documenti allegati", expanded=True):
-            if not _is_cloud:
-                if "tunnel_url" not in st.session_state:
-                    st.session_state.tunnel_url = None
+            # QR code per aprire questa pagina dal cellulare.
+            if _is_cloud:
+                host = st.context.headers.get("host", "")
+                mobile_url = f"https://{host}/Broker" if host else None
+            else:
+                mobile_url = f"http://{_ip_locale()}:{_porta_streamlit()}/Broker"
 
-                col_btn, col_info = st.columns([1, 3])
-                with col_btn:
-                    if st.button("📱 Link per cellulare", use_container_width=True):
+            if mobile_url:
+                col_qr, col_info = st.columns([1, 3])
+                with col_qr:
+                    st.image(_qr_bytes(mobile_url), width=130)
+                with col_info:
+                    st.markdown("**Carica documenti dal cellulare**")
+                    st.caption(f"Inquadra il QR con il telefono oppure apri: `{mobile_url}`")
+                    if not _is_cloud:
+                        st.caption("Il telefono deve essere sulla stessa rete WiFi.")
+
+                if not _is_cloud:
+                    if "tunnel_url" not in st.session_state:
+                        st.session_state.tunnel_url = None
+                    if st.button("📱 Genera link pubblico (ngrok)", use_container_width=True):
                         with st.spinner("Avvio tunnel…"):
                             st.session_state.tunnel_url = _avvia_tunnel()
-
-                with col_info:
                     if isinstance(st.session_state.tunnel_url, str):
-                        st.success("Scansiona il QR con il telefono — funziona anche senza WiFi condiviso.")
-                    elif st.session_state.tunnel_url is None:
-                        st.caption(
-                            "Clicca il pulsante per generare un link pubblico temporaneo "
-                            "accessibile dal cellulare. Richiede ngrok configurato "
-                            "(vedi istruzioni sotto)."
+                        col_qr2, col_url2 = st.columns([1, 3])
+                        with col_qr2:
+                            st.image(_qr_bytes(st.session_state.tunnel_url), width=130)
+                        with col_url2:
+                            st.markdown(f"**URL pubblico:** `{st.session_state.tunnel_url}`")
+                            st.caption("Funziona anche senza WiFi condiviso. Scade alla chiusura.")
+                    elif st.session_state.tunnel_url is False:
+                        st.warning(
+                            "ngrok non configurato. Esegui nel terminale:\n\n"
+                            "```\nngrok config add-authtoken IL_TUO_TOKEN\n```"
                         )
-
-                if isinstance(st.session_state.tunnel_url, str):
-                    col_qr, col_url = st.columns([1, 3])
-                    with col_qr:
-                        st.image(_qr_bytes(st.session_state.tunnel_url), width=150)
-                    with col_url:
-                        st.markdown(f"**URL:** `{st.session_state.tunnel_url}`")
-                        st.caption("Il link è temporaneo e scade alla chiusura dell'app.")
-                elif st.session_state.tunnel_url is False:
-                    st.error(
-                        "ngrok non configurato. Esegui una volta nel terminale:\n\n"
-                        "```\nngrok config add-authtoken IL_TUO_TOKEN\n```\n\n"
-                        "Token gratuito su https://dashboard.ngrok.com/get-started/your-authtoken"
-                    )
             st.divider()
             doc_identita = _input_documento(
                 "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita"
