@@ -23,6 +23,7 @@ from services import operatore_service, pratica_service
 from services.pratica_service import ValidazionePraticaError
 from utils.config import (
     COMPAGNIE,
+    DB_URL,
     METODI_PAGAMENTO,
     Ruolo,
     TipoCliente,
@@ -30,6 +31,8 @@ from utils.config import (
     TipoPolizza,
     Urgenza,
 )
+
+_is_cloud = not DB_URL.startswith("sqlite")
 
 
 def _ip_locale() -> str:
@@ -156,38 +159,39 @@ def render() -> None:
             "Se polizza Auto: Libretto."
         )
         with st.expander("📎 Documenti allegati", expanded=True):
-            if "tunnel_url" not in st.session_state:
-                st.session_state.tunnel_url = None
+            if not _is_cloud:
+                if "tunnel_url" not in st.session_state:
+                    st.session_state.tunnel_url = None
 
-            col_btn, col_info = st.columns([1, 3])
-            with col_btn:
-                if st.button("📱 Link per cellulare", use_container_width=True):
-                    with st.spinner("Avvio tunnel…"):
-                        st.session_state.tunnel_url = _avvia_tunnel()
+                col_btn, col_info = st.columns([1, 3])
+                with col_btn:
+                    if st.button("📱 Link per cellulare", use_container_width=True):
+                        with st.spinner("Avvio tunnel…"):
+                            st.session_state.tunnel_url = _avvia_tunnel()
 
-            with col_info:
+                with col_info:
+                    if isinstance(st.session_state.tunnel_url, str):
+                        st.success("Scansiona il QR con il telefono — funziona anche senza WiFi condiviso.")
+                    elif st.session_state.tunnel_url is None:
+                        st.caption(
+                            "Clicca il pulsante per generare un link pubblico temporaneo "
+                            "accessibile dal cellulare. Richiede ngrok configurato "
+                            "(vedi istruzioni sotto)."
+                        )
+
                 if isinstance(st.session_state.tunnel_url, str):
-                    st.success("Scansiona il QR con il telefono — funziona anche senza WiFi condiviso.")
-                elif st.session_state.tunnel_url is None:
-                    st.caption(
-                        "Clicca il pulsante per generare un link pubblico temporaneo "
-                        "accessibile dal cellulare. Richiede ngrok configurato "
-                        "(vedi istruzioni sotto)."
+                    col_qr, col_url = st.columns([1, 3])
+                    with col_qr:
+                        st.image(_qr_bytes(st.session_state.tunnel_url), width=150)
+                    with col_url:
+                        st.markdown(f"**URL:** `{st.session_state.tunnel_url}`")
+                        st.caption("Il link è temporaneo e scade alla chiusura dell'app.")
+                elif st.session_state.tunnel_url is False:
+                    st.error(
+                        "ngrok non configurato. Esegui una volta nel terminale:\n\n"
+                        "```\nngrok config add-authtoken IL_TUO_TOKEN\n```\n\n"
+                        "Token gratuito su https://dashboard.ngrok.com/get-started/your-authtoken"
                     )
-
-            if isinstance(st.session_state.tunnel_url, str):
-                col_qr, col_url = st.columns([1, 3])
-                with col_qr:
-                    st.image(_qr_bytes(st.session_state.tunnel_url), width=150)
-                with col_url:
-                    st.markdown(f"**URL:** `{st.session_state.tunnel_url}`")
-                    st.caption("Il link è temporaneo e scade alla chiusura dell'app.")
-            elif st.session_state.tunnel_url is False:
-                st.error(
-                    "ngrok non configurato. Esegui una volta nel terminale:\n\n"
-                    "```\nngrok config add-authtoken IL_TUO_TOKEN\n```\n\n"
-                    "Token gratuito su https://dashboard.ngrok.com/get-started/your-authtoken"
-                )
             st.divider()
             doc_identita = _input_documento(
                 "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita"
