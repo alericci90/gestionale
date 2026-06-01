@@ -75,6 +75,7 @@ def valida_dati_pratica(dati: Dict[str, Any]) -> List[str]:
             TipoDocumento.CARTA_IDENTITA.value,
             TipoDocumento.PATENTE.value,
             TipoDocumento.PASSAPORTO.value,
+            TipoDocumento.DOCUMENTO.value,  # caricati dal telefono senza categorizzazione
         }
         if not (tipi_caricati & identita):
             errori.append(
