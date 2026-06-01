@@ -33,8 +33,11 @@ _is_sqlite = DB_URL.startswith("sqlite")
 if _is_sqlite:
     _connect_args = {"check_same_thread": False}
 else:
-    # Supabase (e PostgreSQL in generale) richiede SSL.
+    # Supabase richiede SSL ma presenta un certificato self-signed nella chain
+    # che Python 3.14 rifiuta con la verifica standard.
     _ssl_ctx = ssl.create_default_context()
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = ssl.CERT_NONE
     _connect_args = {"ssl_context": _ssl_ctx}
 
 engine: Engine = create_engine(
