@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import socket
+import uuid
 from datetime import date
 
 import qrcode
@@ -19,7 +20,7 @@ import streamlit as st
 
 from app.ui_common import sezione, setup_page
 from database.connection import get_session
-from services import operatore_service, pratica_service
+from services import documento_service, operatore_service, pratica_service
 from services.pratica_service import ValidazionePraticaError
 from utils.config import (
     COMPAGNIE,
@@ -159,20 +160,28 @@ def render() -> None:
             "Se polizza Auto: Libretto."
         )
         with st.expander("📎 Documenti allegati", expanded=True):
-            # QR code per aprire questa pagina dal cellulare.
-            if _is_cloud:
+            # Genera un ID di sessione univoco per collegare gli upload mobili.
+            if "upload_sid" not in st.session_state:
+                st.session_state.upload_sid = uuid.uuid4().hex
+            sid = st.session_state.upload_sid
+
+            _usa_storage = documento_service._usa_cloud()
+
+            if _is_cloud and _usa_storage:
                 host = st.context.headers.get("host", "")
-                mobile_url = f"https://{host}/Broker" if host else None
+                mobile_url = f"https://{host}/Upload_Documenti?sid={sid}" if host else None
+            elif not _is_cloud:
+                mobile_url = f"http://{_ip_locale()}:{_porta_streamlit()}/Upload_Documenti?sid={sid}"
             else:
-                mobile_url = f"http://{_ip_locale()}:{_porta_streamlit()}/Broker"
+                mobile_url = None
 
             if mobile_url:
                 col_qr, col_info = st.columns([1, 3])
                 with col_qr:
                     st.image(_qr_bytes(mobile_url), width=130)
                 with col_info:
-                    st.markdown("**Carica documenti dal cellulare**")
-                    st.caption(f"Inquadra il QR con il telefono oppure apri: `{mobile_url}`")
+                    st.markdown("**Carica foto dal cellulare**")
+                    st.caption("Inquadra il QR: si apre solo il form di caricamento foto, non l'intera pratica.")
                     if not _is_cloud:
                         st.caption("Il telefono deve essere sulla stessa rete WiFi.")
 
@@ -183,17 +192,34 @@ def render() -> None:
                         with st.spinner("Avvio tunnel…"):
                             st.session_state.tunnel_url = _avvia_tunnel()
                     if isinstance(st.session_state.tunnel_url, str):
+                        ngrok_upload = st.session_state.tunnel_url + f"/Upload_Documenti?sid={sid}"
                         col_qr2, col_url2 = st.columns([1, 3])
                         with col_qr2:
-                            st.image(_qr_bytes(st.session_state.tunnel_url), width=130)
+                            st.image(_qr_bytes(ngrok_upload), width=130)
                         with col_url2:
-                            st.markdown(f"**URL pubblico:** `{st.session_state.tunnel_url}`")
+                            st.markdown(f"**URL pubblico:** `{ngrok_upload}`")
                             st.caption("Funziona anche senza WiFi condiviso. Scade alla chiusura.")
                     elif st.session_state.tunnel_url is False:
                         st.warning(
                             "ngrok non configurato. Esegui nel terminale:\n\n"
                             "```\nngrok config add-authtoken IL_TUO_TOKEN\n```"
                         )
+
+            # Documenti ricevuti dal telefono.
+            if _usa_storage:
+                col_aggiorna, _ = st.columns([1, 3])
+                with col_aggiorna:
+                    if st.button("🔄 Aggiorna documenti ricevuti", use_container_width=True):
+                        st.session_state.docs_remoti = documento_service.lista_temp_files(sid)
+
+                docs_remoti = st.session_state.get("docs_remoti", [])
+                if docs_remoti:
+                    st.success(f"{len(docs_remoti)} documento/i ricevuto/i dal telefono:")
+                    for d in docs_remoti:
+                        st.markdown(f"• **{d['tipo']}** — {d['nome']}")
+                elif "docs_remoti" in st.session_state:
+                    st.info("Nessun documento ricevuto ancora. Carica dal telefono e poi aggiorna.")
+
             st.divider()
             doc_identita = _input_documento(
                 "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita"
@@ -290,6 +316,14 @@ def render() -> None:
     # Invio
     # ------------------------------------------------------------------ #
     if st.button("📨 Invia pratica alla segreteria", type="primary", use_container_width=True):
+        # Aggiunge i documenti caricati dal telefono (già su Supabase Storage).
+        for d in st.session_state.get("docs_remoti", []):
+            documenti.append({
+                "tipo_documento": d["tipo"],
+                "nome_file": d["nome"],
+                "percorso": d["url"],
+            })
+
         dati = {
             "broker_id": broker_id,
             "gia_cliente": gia_cliente,

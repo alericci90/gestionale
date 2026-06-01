@@ -69,14 +69,45 @@ def leggi_file(riferimento: str) -> Optional[bytes]:
 # CRUD documenti
 # --------------------------------------------------------------------------- #
 
+def salva_temp_file(sid: str, tipo: str, nome_file: str, contenuto: bytes) -> str:
+    """Salva file temporaneo su Supabase Storage per upload mobile. Ritorna URL pubblico."""
+    estensione = Path(nome_file).suffix or ".jpg"
+    percorso = f"temp/{sid}/{tipo}__{uuid.uuid4().hex}{estensione}"
+    client = _client_supabase()
+    client.storage.from_(SUPABASE_BUCKET).upload(
+        path=percorso,
+        file=contenuto,
+        file_options={"content-type": "application/octet-stream", "upsert": "true"},
+    )
+    return client.storage.from_(SUPABASE_BUCKET).get_public_url(percorso)
+
+
+def lista_temp_files(sid: str) -> list[dict]:
+    """Lista i file caricati dal telefono per questa sessione."""
+    try:
+        client = _client_supabase()
+        files = client.storage.from_(SUPABASE_BUCKET).list(f"temp/{sid}")
+        result = []
+        for f in (files or []):
+            nome = f["name"]
+            url = client.storage.from_(SUPABASE_BUCKET).get_public_url(f"temp/{sid}/{nome}")
+            tipo = nome.split("__")[0] if "__" in nome else "documento"
+            result.append({"tipo": tipo, "url": url, "nome": nome})
+        return result
+    except Exception:
+        return []
+
+
 def aggiungi_documento(
     session: Session,
     pratica_id: int,
     tipo_documento: TipoDocumento,
     nome_file: str,
     contenuto: Optional[bytes] = None,
+    percorso: Optional[str] = None,
 ) -> Documento:
-    percorso = salva_file(nome_file, contenuto) if contenuto else None
+    if contenuto is not None and percorso is None:
+        percorso = salva_file(nome_file, contenuto)
     doc = Documento(
         pratica_id=pratica_id,
         tipo_documento=tipo_documento.value,

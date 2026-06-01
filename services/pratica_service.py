@@ -136,6 +136,7 @@ def crea_pratica(session: Session, dati: Dict[str, Any]) -> Pratica:
             tipo_documento=TipoDocumento(doc["tipo_documento"]),
             nome_file=doc["nome_file"],
             contenuto=doc.get("contenuto"),
+            percorso=doc.get("percorso"),
         )
 
     return pratica
