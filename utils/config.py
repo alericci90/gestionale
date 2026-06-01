@@ -97,6 +97,7 @@ class TipoDocumento(str, enum.Enum):
     CODICE_FISCALE = "codice_fiscale"
     VISURA = "visura"
     LIBRETTO = "libretto"
+    DOCUMENTO = "documento"
 
 
 # --------------------------------------------------------------------------- #
@@ -125,6 +126,7 @@ LABEL_TIPO_DOCUMENTO = {
     TipoDocumento.CODICE_FISCALE: "Codice Fiscale",
     TipoDocumento.VISURA: "Visura camerale",
     TipoDocumento.LIBRETTO: "Libretto veicolo",
+    TipoDocumento.DOCUMENTO: "Documento",
 }
 
 # Colori usati per evidenziare priorità / stato nelle tabelle e nei badge.
