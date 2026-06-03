@@ -55,11 +55,9 @@ def valida_dati_pratica(dati: Dict[str, Any]) -> List[str]:
     if dati.get("gia_pagato") or dati.get("incasso"):
         if not (dati.get("metodo_pagamento") or "").strip():
             errori.append("Indicare il metodo di pagamento.")
-    else:
+    if not dati.get("gia_pagato"):
         if dati.get("invia_mail") is None:
-            errori.append(
-                "Importo non incassato: indicare se inviare la mail di pagamento al cliente."
-            )
+            errori.append("Indicare se inviare la mail di pagamento al cliente.")
 
     # --- Documenti per nuovo cliente ------------------------------------- #
     if not dati.get("gia_cliente"):
@@ -90,8 +88,8 @@ def normalizza_per_emissione(dati: Dict[str, Any]) -> Dict[str, Any]:
     else:
         d["n_polizza"] = None
 
-    if d.get("gia_pagato") or d.get("incasso"):
+    if d.get("gia_pagato"):
         d["invia_mail"] = None
-    else:
+    if not (d.get("gia_pagato") or d.get("incasso")):
         d["metodo_pagamento"] = None
     return d

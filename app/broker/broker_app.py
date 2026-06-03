@@ -205,7 +205,7 @@ def render() -> None:
 
     if gia_pagato or incasso:
         metodo_pagamento = st.selectbox("Metodo di pagamento", METODI_PAGAMENTO)
-    else:
+    if not gia_pagato:
         invia_mail = st.radio(
             "Inviare una mail al cliente per effettuare il pagamento?",
             ["Sì", "No"],
