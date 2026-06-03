@@ -160,7 +160,7 @@ def render() -> None:
         TipoPolizza.AUTO if tipo_polizza_label == "Auto" else TipoPolizza.RAMI_ELEMENTARI
     )
 
-    if tipo_polizza == TipoPolizza.AUTO:
+    if gia_cliente and tipo_polizza == TipoPolizza.AUTO:
         prima_volta_macchina = st.radio(
             "La macchina viene inserita per la prima volta?",
             ["No", "Sì"],
