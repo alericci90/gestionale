@@ -254,11 +254,11 @@ def elimina_pratica(session: Session, pratica_id: int) -> None:
     session.flush()
 
 
-def aggiorna_note(session: Session, pratica_id: int, note: str) -> Pratica:
+def aggiorna_nota_segreteria(session: Session, pratica_id: int, nota: str) -> Pratica:
     pratica = session.get(Pratica, pratica_id)
     if pratica is None:
         raise ValueError(f"Pratica #{pratica_id} non trovata.")
-    pratica.note = note
+    pratica.nota_segreteria = nota or None
     session.flush()
     return pratica
 

@@ -97,6 +97,7 @@ def _dettaglio_record(p) -> dict:
         "metodo_pagamento": p.metodo_pagamento,
         "invia_mail": p.invia_mail,
         "note": p.note or "",
+        "nota_segreteria": p.nota_segreteria or "",
         "broker": p.broker.nome if p.broker else "—",
         "assegnato_id": p.operatore_assegnato_id,
         "assegnato": p.operatore_assegnato.nome if p.operatore_assegnato else None,
@@ -299,6 +300,7 @@ def _pannello_dettaglio(records: list[dict]) -> None:
             assegn_corrente = det["assegnato"] or "— Non assegnata —"
             idx = nomi_operatori.index(assegn_corrente) if assegn_corrente in nomi_operatori else 0
             nuovo_assegn = st.selectbox("Assegna a", nomi_operatori, index=idx)
+        nota_seg = st.text_area("Nota della Segreteria", value=det["nota_segreteria"], height=100)
 
         salva = st.form_submit_button("💾 Salva modifiche", type="primary", use_container_width=True)
 
@@ -309,6 +311,7 @@ def _pannello_dettaglio(records: list[dict]) -> None:
                 pratica_service.aggiorna_urgenza(session, pratica_id, _URGENZE[nuova_urgenza])
                 op_id = None if nuovo_assegn == "— Non assegnata —" else id_per_nome[nuovo_assegn]
                 pratica_service.assegna_operatore(session, pratica_id, op_id)
+                pratica_service.aggiorna_nota_segreteria(session, pratica_id, nota_seg)
             st.success("Modifiche salvate.")
             st.rerun()
         except Exception as e:  # pragma: no cover

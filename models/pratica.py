@@ -57,6 +57,7 @@ class Pratica(Base):
     urgenza: Mapped[str] = mapped_column(String(10), nullable=False, default=Urgenza.BASSA.value)
     stato: Mapped[str] = mapped_column(String(20), nullable=False, default=StatoPratica.NUOVA.value)
     note: Mapped[Optional[str]] = mapped_column(Text)
+    nota_segreteria: Mapped[Optional[str]] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
