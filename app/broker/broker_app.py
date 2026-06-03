@@ -179,12 +179,15 @@ def render() -> None:
         TipoPolizza.AUTO if tipo_polizza_label == "Auto" else TipoPolizza.RAMI_ELEMENTARI
     )
 
-    prima_volta_macchina = st.radio(
-        "La macchina viene inserita per la prima volta?",
-        ["No", "Sì"],
-        horizontal=True,
-        key=f"prima_volta_{v}",
-    ) == "Sì"
+    if tipo_polizza == TipoPolizza.AUTO:
+        prima_volta_macchina = st.radio(
+            "La macchina viene inserita per la prima volta?",
+            ["No", "Sì"],
+            horizontal=True,
+            key=f"prima_volta_{v}",
+        ) == "Sì"
+    else:
+        prima_volta_macchina = False
 
     emissione = st.radio("È stata già emessa la polizza?", ["Sì", "No"], horizontal=True) == "Sì"
     n_polizza = n_preventivo = None
