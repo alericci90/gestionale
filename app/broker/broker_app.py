@@ -159,104 +159,7 @@ def render() -> None:
     nome_cliente = st.text_input(nome_label)
 
     partita_iva = ""
-
-    # Legge prima_volta dalla session state: il radio è renderizzato più in basso
-    # (sezione Polizza), ma il valore aggiornato al rerun precedente è già disponibile.
-    _prima_volta_key = f"prima_volta_{v}"
-    prima_volta_macchina = st.session_state.get(_prima_volta_key, "No") == "Sì"
-
     documenti = []
-    if not gia_cliente or prima_volta_macchina:
-        if prima_volta_macchina and gia_cliente:
-            st.info(
-                "**Nuova macchina** → carica i documenti del veicolo: Libretto. "
-                "Aggiungi eventuali altri documenti se necessario."
-            )
-        else:
-            st.info(
-                "**Nuovo cliente** → carica i documenti (fronte e retro): "
-                "documento d'identità + Codice Fiscale. "
-                "Se azienda: Visura + C.I. del legale rappresentante. "
-                "Se polizza Auto: Libretto."
-            )
-        with st.expander("📎 Documenti allegati", expanded=True):
-            # Genera un ID di sessione univoco per collegare gli upload mobili.
-            if "upload_sid" not in st.session_state:
-                st.session_state.upload_sid = uuid.uuid4().hex
-            sid = st.session_state.upload_sid
-
-            _usa_storage = documento_service._usa_cloud()
-
-            if _is_cloud and _usa_storage:
-                host = st.context.headers.get("host", "")
-                mobile_url = f"https://{host}/Upload_Documenti?sid={sid}" if host else None
-            elif not _is_cloud:
-                mobile_url = f"http://{_ip_locale()}:{_porta_streamlit()}/Upload_Documenti?sid={sid}"
-            else:
-                mobile_url = None
-
-            if mobile_url:
-                col_qr, col_info = st.columns([1, 3])
-                with col_qr:
-                    st.image(_qr_bytes(mobile_url), width=130)
-                with col_info:
-                    st.markdown("**Carica foto dal cellulare**")
-                    st.caption("Inquadra il QR: si apre solo il form di caricamento foto, non l'intera pratica.")
-                    if not _is_cloud:
-                        st.caption("Il telefono deve essere sulla stessa rete WiFi.")
-
-                if not _is_cloud:
-                    if "tunnel_url" not in st.session_state:
-                        st.session_state.tunnel_url = None
-                    if st.button("📱 Genera link pubblico (ngrok)", use_container_width=True):
-                        with st.spinner("Avvio tunnel…"):
-                            st.session_state.tunnel_url = _avvia_tunnel()
-                    if isinstance(st.session_state.tunnel_url, str):
-                        ngrok_upload = st.session_state.tunnel_url + f"/Upload_Documenti?sid={sid}"
-                        col_qr2, col_url2 = st.columns([1, 3])
-                        with col_qr2:
-                            st.image(_qr_bytes(ngrok_upload), width=130)
-                        with col_url2:
-                            st.markdown(f"**URL pubblico:** `{ngrok_upload}`")
-                            st.caption("Funziona anche senza WiFi condiviso. Scade alla chiusura.")
-                    elif st.session_state.tunnel_url is False:
-                        st.warning(
-                            "ngrok non configurato. Esegui nel terminale:\n\n"
-                            "```\nngrok config add-authtoken IL_TUO_TOKEN\n```"
-                        )
-
-            # Documenti ricevuti dal telefono.
-            if _usa_storage:
-                col_aggiorna, _ = st.columns([1, 3])
-                with col_aggiorna:
-                    if st.button("🔄 Aggiorna documenti ricevuti", use_container_width=True):
-                        st.session_state.docs_remoti = documento_service.lista_temp_files(sid)
-
-                docs_remoti = st.session_state.get("docs_remoti", [])
-                if docs_remoti:
-                    st.success(f"{len(docs_remoti)} documento/i ricevuto/i dal telefono:")
-                    for d in docs_remoti:
-                        st.markdown(f"• **{d['tipo']}** — {d['nome']}")
-                elif "docs_remoti" in st.session_state:
-                    st.info("Nessun documento ricevuto ancora. Carica dal telefono e poi aggiorna.")
-
-            st.divider()
-            doc_identita = _input_documento(
-                "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita", v
-            )
-            doc_cf = _input_documento("Codice Fiscale (tessera)", "cf", v)
-            doc_visura = _input_documento("Visura (se azienda)", "visura", v)
-            doc_libretto = _input_documento("Libretto (se polizza Auto)", "libretto", v)
-
-            for up, tipo in (
-                (doc_identita, TipoDocumento.CARTA_IDENTITA),
-                (doc_cf, TipoDocumento.CODICE_FISCALE),
-                (doc_visura, TipoDocumento.VISURA),
-                (doc_libretto, TipoDocumento.LIBRETTO),
-            ):
-                d = _file_a_documento(up, tipo)
-                if d:
-                    documenti.append(d)
 
     # ------------------------------------------------------------------ #
     # Polizza
@@ -278,9 +181,9 @@ def render() -> None:
 
     prima_volta_macchina = st.radio(
         "La macchina viene inserita per la prima volta?",
-        ["Sì", "No"],
+        ["No", "Sì"],
         horizontal=True,
-        key=_prima_volta_key,
+        key=f"prima_volta_{v}",
     ) == "Sì"
 
     emissione = st.radio("È stata già emessa la polizza?", ["Sì", "No"], horizontal=True) == "Sì"
@@ -336,6 +239,100 @@ def render() -> None:
     urgenza = Urgenza.ALTA if urgenza_label == "Alta" else Urgenza.BASSA
     with col12:
         note = st.text_area("Note (opzionale)", height=80)
+
+    # ------------------------------------------------------------------ #
+    # Documenti allegati
+    # ------------------------------------------------------------------ #
+    if not gia_cliente or prima_volta_macchina:
+        sezione("Documenti allegati")
+        if prima_volta_macchina and gia_cliente:
+            st.info(
+                "**Nuova macchina** → carica i documenti del veicolo: Libretto. "
+                "Aggiungi eventuali altri documenti se necessario."
+            )
+        else:
+            st.info(
+                "**Nuovo cliente** → carica i documenti (fronte e retro): "
+                "documento d'identità + Codice Fiscale. "
+                "Se azienda: Visura + C.I. del legale rappresentante. "
+                "Se polizza Auto: Libretto."
+            )
+        with st.expander("📎 Documenti allegati", expanded=True):
+            if "upload_sid" not in st.session_state:
+                st.session_state.upload_sid = uuid.uuid4().hex
+            sid = st.session_state.upload_sid
+
+            _usa_storage = documento_service._usa_cloud()
+
+            if _is_cloud and _usa_storage:
+                host = st.context.headers.get("host", "")
+                mobile_url = f"https://{host}/Upload_Documenti?sid={sid}" if host else None
+            elif not _is_cloud:
+                mobile_url = f"http://{_ip_locale()}:{_porta_streamlit()}/Upload_Documenti?sid={sid}"
+            else:
+                mobile_url = None
+
+            if mobile_url:
+                col_qr, col_info = st.columns([1, 3])
+                with col_qr:
+                    st.image(_qr_bytes(mobile_url), width=130)
+                with col_info:
+                    st.markdown("**Carica foto dal cellulare**")
+                    st.caption("Inquadra il QR: si apre solo il form di caricamento foto, non l'intera pratica.")
+                    if not _is_cloud:
+                        st.caption("Il telefono deve essere sulla stessa rete WiFi.")
+
+                if not _is_cloud:
+                    if "tunnel_url" not in st.session_state:
+                        st.session_state.tunnel_url = None
+                    if st.button("📱 Genera link pubblico (ngrok)", use_container_width=True):
+                        with st.spinner("Avvio tunnel…"):
+                            st.session_state.tunnel_url = _avvia_tunnel()
+                    if isinstance(st.session_state.tunnel_url, str):
+                        ngrok_upload = st.session_state.tunnel_url + f"/Upload_Documenti?sid={sid}"
+                        col_qr2, col_url2 = st.columns([1, 3])
+                        with col_qr2:
+                            st.image(_qr_bytes(ngrok_upload), width=130)
+                        with col_url2:
+                            st.markdown(f"**URL pubblico:** `{ngrok_upload}`")
+                            st.caption("Funziona anche senza WiFi condiviso. Scade alla chiusura.")
+                    elif st.session_state.tunnel_url is False:
+                        st.warning(
+                            "ngrok non configurato. Esegui nel terminale:\n\n"
+                            "```\nngrok config add-authtoken IL_TUO_TOKEN\n```"
+                        )
+
+            if _usa_storage:
+                col_aggiorna, _ = st.columns([1, 3])
+                with col_aggiorna:
+                    if st.button("🔄 Aggiorna documenti ricevuti", use_container_width=True):
+                        st.session_state.docs_remoti = documento_service.lista_temp_files(sid)
+
+                docs_remoti = st.session_state.get("docs_remoti", [])
+                if docs_remoti:
+                    st.success(f"{len(docs_remoti)} documento/i ricevuto/i dal telefono:")
+                    for d in docs_remoti:
+                        st.markdown(f"• **{d['tipo']}** — {d['nome']}")
+                elif "docs_remoti" in st.session_state:
+                    st.info("Nessun documento ricevuto ancora. Carica dal telefono e poi aggiorna.")
+
+            st.divider()
+            doc_identita = _input_documento(
+                "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita", v
+            )
+            doc_cf = _input_documento("Codice Fiscale (tessera)", "cf", v)
+            doc_visura = _input_documento("Visura (se azienda)", "visura", v)
+            doc_libretto = _input_documento("Libretto (se polizza Auto)", "libretto", v)
+
+            for up, tipo in (
+                (doc_identita, TipoDocumento.CARTA_IDENTITA),
+                (doc_cf, TipoDocumento.CODICE_FISCALE),
+                (doc_visura, TipoDocumento.VISURA),
+                (doc_libretto, TipoDocumento.LIBRETTO),
+            ):
+                d = _file_a_documento(up, tipo)
+                if d:
+                    documenti.append(d)
 
     st.divider()
 
