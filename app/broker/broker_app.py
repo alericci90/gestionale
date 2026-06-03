@@ -160,14 +160,25 @@ def render() -> None:
 
     partita_iva = ""
 
+    # Legge prima_volta dalla session state: il radio è renderizzato più in basso
+    # (sezione Polizza), ma il valore aggiornato al rerun precedente è già disponibile.
+    _prima_volta_key = f"prima_volta_{v}"
+    prima_volta_macchina = st.session_state.get(_prima_volta_key, "No") == "Sì"
+
     documenti = []
-    if not gia_cliente:
-        st.info(
-            "**Nuovo cliente** → carica i documenti (fronte e retro): "
-            "documento d'identità + Codice Fiscale. "
-            "Se azienda: Visura + C.I. del legale rappresentante. "
-            "Se polizza Auto: Libretto."
-        )
+    if not gia_cliente or prima_volta_macchina:
+        if prima_volta_macchina and gia_cliente:
+            st.info(
+                "**Nuova macchina** → carica i documenti del veicolo: Libretto. "
+                "Aggiungi eventuali altri documenti se necessario."
+            )
+        else:
+            st.info(
+                "**Nuovo cliente** → carica i documenti (fronte e retro): "
+                "documento d'identità + Codice Fiscale. "
+                "Se azienda: Visura + C.I. del legale rappresentante. "
+                "Se polizza Auto: Libretto."
+            )
         with st.expander("📎 Documenti allegati", expanded=True):
             # Genera un ID di sessione univoco per collegare gli upload mobili.
             if "upload_sid" not in st.session_state:
@@ -264,6 +275,13 @@ def render() -> None:
     tipo_polizza = (
         TipoPolizza.AUTO if tipo_polizza_label == "Auto" else TipoPolizza.RAMI_ELEMENTARI
     )
+
+    prima_volta_macchina = st.radio(
+        "La macchina viene inserita per la prima volta?",
+        ["Sì", "No"],
+        horizontal=True,
+        key=_prima_volta_key,
+    ) == "Sì"
 
     emissione = st.radio("È stata già emessa la polizza?", ["Sì", "No"], horizontal=True) == "Sì"
     n_polizza = n_preventivo = None

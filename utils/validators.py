@@ -48,8 +48,8 @@ def valida_dati_pratica(dati: Dict[str, Any]) -> List[str]:
     for campo, etichetta in (("importo_polizza", "importo polizza"),
                              ("importo_cliente", "importo cliente")):
         valore = dati.get(campo)
-        if valore is not None and valore < 0:
-            errori.append(f"L'{etichetta} non può essere negativo.")
+        if valore is None or valore <= 0:
+            errori.append(f"L'{etichetta} deve essere maggiore di zero.")
 
     # --- Pagamento -------------------------------------------------------- #
     if dati.get("gia_pagato"):
