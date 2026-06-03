@@ -86,29 +86,6 @@ def _carica_broker():
         return [(o.id, o.nome) for o in ops]
 
 
-def _file_a_documento(uploaded, tipo: TipoDocumento):
-    """Trasforma un file caricato in un dict-documento per il service."""
-    if uploaded is None:
-        return None
-    return {
-        "tipo_documento": tipo.value,
-        "nome_file": uploaded.name,
-        "contenuto": uploaded.getvalue(),
-    }
-
-
-def _input_documento(label: str, key: str, v: int):
-    """File uploader + fotocamera: restituisce il primo input non nullo."""
-    tab_file, tab_cam = st.tabs(["📁 Carica file", "📷 Fotocamera"])
-    with tab_file:
-        da_file = st.file_uploader(
-            label, type=["pdf", "jpg", "jpeg", "png"],
-            key=f"{key}_file_{v}", label_visibility="collapsed",
-        )
-    with tab_cam:
-        da_camera = st.camera_input("Scatta una foto", key=f"{key}_cam_{v}")
-    return da_file or da_camera
-
 
 def render() -> None:
     setup_page("Inserimento Pratica · Broker", "📝")
@@ -120,9 +97,13 @@ def render() -> None:
     v = st.session_state.form_v
 
     if st.session_state.get("pratica_inviata"):
-        st.success(f"✅ Pratica **{st.session_state.pratica_inviata}** inviata correttamente alla segreteria!")
+        numero = st.session_state.pratica_inviata
+        st.success(f"✅ Pratica **{numero}** inviata correttamente alla segreteria!")
         st.balloons()
-        del st.session_state["pratica_inviata"]
+        if st.button("📝 Comincia una nuova pratica", type="primary", use_container_width=True):
+            del st.session_state["pratica_inviata"]
+            st.rerun()
+        return
 
     broker = _carica_broker()
     if not broker:
@@ -320,22 +301,30 @@ def render() -> None:
                     st.info("Nessun documento ricevuto ancora. Carica dal telefono e poi aggiorna.")
 
             st.divider()
-            doc_identita = _input_documento(
-                "Documento d'identità (Carta d'Identità / Patente / Passaporto)", "identita", v
-            )
-            doc_cf = _input_documento("Codice Fiscale (tessera)", "cf", v)
-            doc_visura = _input_documento("Visura (se azienda)", "visura", v)
-            doc_libretto = _input_documento("Libretto (se polizza Auto)", "libretto", v)
+            tab_file, tab_cam = st.tabs(["📁 Carica da PC", "📷 Fotocamera"])
+            with tab_file:
+                files_pc = st.file_uploader(
+                    "Seleziona uno o più documenti",
+                    type=["pdf", "jpg", "jpeg", "png"],
+                    accept_multiple_files=True,
+                    key=f"docs_pc_{v}",
+                    label_visibility="collapsed",
+                )
+            with tab_cam:
+                foto_pc = st.camera_input("Scatta una foto", key=f"cam_pc_{v}")
 
-            for up, tipo in (
-                (doc_identita, TipoDocumento.CARTA_IDENTITA),
-                (doc_cf, TipoDocumento.CODICE_FISCALE),
-                (doc_visura, TipoDocumento.VISURA),
-                (doc_libretto, TipoDocumento.LIBRETTO),
-            ):
-                d = _file_a_documento(up, tipo)
-                if d:
-                    documenti.append(d)
+            for f in (files_pc or []):
+                documenti.append({
+                    "tipo_documento": TipoDocumento.DOCUMENTO.value,
+                    "nome_file": f.name,
+                    "contenuto": f.getvalue(),
+                })
+            if foto_pc:
+                documenti.append({
+                    "tipo_documento": TipoDocumento.DOCUMENTO.value,
+                    "nome_file": "foto.jpg",
+                    "contenuto": foto_pc.getvalue(),
+                })
 
     st.divider()
 
