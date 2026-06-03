@@ -1,15 +1,47 @@
 """Service per la gestione dei documenti allegati a una pratica."""
 from __future__ import annotations
 
+import io
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models import Documento
 from utils.config import SUPABASE_BUCKET, SUPABASE_KEY, SUPABASE_URL, UPLOAD_DIR, TipoDocumento
+
+_IMMAGINI = {".jpg", ".jpeg", ".png"}
+_MAX_LATO = 1000  # pixel
+_JPEG_QUALITY = 80
+
+
+def _comprimi_se_immagine(nome_file: str, contenuto: bytes) -> Tuple[str, bytes]:
+    """Ridimensiona e comprime le immagini a max 1000px sul lato lungo.
+
+    PDF e file non-immagine vengono restituiti invariati.
+    PNG viene convertito in JPEG per ridurre ulteriormente le dimensioni.
+    """
+    estensione = Path(nome_file).suffix.lower()
+    if estensione not in _IMMAGINI:
+        return nome_file, contenuto
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(contenuto))
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        w, h = img.size
+        if max(w, h) > _MAX_LATO:
+            scala = _MAX_LATO / max(w, h)
+            img = img.resize((int(w * scala), int(h * scala)), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=_JPEG_QUALITY, optimize=True)
+        # Se era PNG aggiorna l'estensione del nome file
+        nuovo_nome = Path(nome_file).stem + ".jpg" if estensione == ".png" else nome_file
+        return nuovo_nome, buf.getvalue()
+    except Exception:
+        return nome_file, contenuto
 
 
 # --------------------------------------------------------------------------- #
@@ -60,6 +92,7 @@ def elimina_file_cloud(url: str) -> None:
 
 def salva_file(nome_file: str, contenuto: bytes) -> str:
     """Salva il file e ritorna il riferimento (percorso locale o URL cloud)."""
+    nome_file, contenuto = _comprimi_se_immagine(nome_file, contenuto)
     if _usa_cloud():
         return _salva_su_supabase(nome_file, contenuto)
     return salva_file_su_disco(nome_file, contenuto)
@@ -84,6 +117,7 @@ def leggi_file(riferimento: str) -> Optional[bytes]:
 
 def salva_temp_file(sid: str, tipo: str, nome_file: str, contenuto: bytes) -> str:
     """Salva file temporaneo su Supabase Storage per upload mobile. Ritorna URL pubblico."""
+    nome_file, contenuto = _comprimi_se_immagine(nome_file, contenuto)
     estensione = Path(nome_file).suffix or ".jpg"
     percorso = f"temp/{sid}/{tipo}__{uuid.uuid4().hex}{estensione}"
     client = _client_supabase()
