@@ -52,21 +52,14 @@ def valida_dati_pratica(dati: Dict[str, Any]) -> List[str]:
             errori.append(f"L'{etichetta} deve essere maggiore di zero.")
 
     # --- Pagamento -------------------------------------------------------- #
-    if dati.get("gia_pagato"):
+    if dati.get("gia_pagato") or dati.get("incasso"):
         if not (dati.get("metodo_pagamento") or "").strip():
-            errori.append("Il cliente ha già pagato: indicare il metodo di pagamento.")
+            errori.append("Indicare il metodo di pagamento.")
     else:
-        if dati.get("incasso") is None:
-            errori.append("Il cliente non ha pagato: indicare se l'importo è stato incassato.")
-        elif dati.get("incasso") is True:
-            # Incassato senza pagamento registrato a monte: serve il metodo.
-            if not (dati.get("metodo_pagamento") or "").strip():
-                errori.append("Importo incassato: indicare il metodo di incasso.")
-        else:  # incasso == False
-            if dati.get("invia_mail") is None:
-                errori.append(
-                    "Importo non incassato: indicare se inviare la mail di pagamento al cliente."
-                )
+        if dati.get("invia_mail") is None:
+            errori.append(
+                "Importo non incassato: indicare se inviare la mail di pagamento al cliente."
+            )
 
     # --- Documenti per nuovo cliente ------------------------------------- #
     if not dati.get("gia_cliente"):
@@ -97,13 +90,8 @@ def normalizza_per_emissione(dati: Dict[str, Any]) -> Dict[str, Any]:
     else:
         d["n_polizza"] = None
 
-    if d.get("gia_pagato"):
-        d["incasso"] = None
+    if d.get("gia_pagato") or d.get("incasso"):
         d["invia_mail"] = None
     else:
-        # Non pagato: nessun metodo se non incassato.
-        if d.get("incasso") is False:
-            d["metodo_pagamento"] = None
-        else:
-            d["invia_mail"] = None
+        d["metodo_pagamento"] = None
     return d

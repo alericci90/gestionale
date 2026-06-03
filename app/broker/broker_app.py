@@ -195,23 +195,22 @@ def render() -> None:
     # Pagamento
     # ------------------------------------------------------------------ #
     sezione("Pagamento")
-    gia_pagato = st.radio("Ha già pagato?", ["Sì", "No"], horizontal=True) == "Sì"
-    incasso = None
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        gia_pagato = st.radio("Ha già pagato?", ["Sì", "No"], horizontal=True) == "Sì"
+    with col_p2:
+        incasso = st.radio("Importo incassato?", ["Sì", "No"], horizontal=True) == "Sì"
     invia_mail = None
     metodo_pagamento = None
 
-    if gia_pagato:
+    if gia_pagato or incasso:
         metodo_pagamento = st.selectbox("Metodo di pagamento", METODI_PAGAMENTO)
     else:
-        incasso = st.radio("Importo incassato?", ["Sì", "No"], horizontal=True) == "Sì"
-        if incasso:
-            metodo_pagamento = st.selectbox("Metodo di incasso", METODI_PAGAMENTO)
-        else:
-            invia_mail = st.radio(
-                "Inviare una mail al cliente per effettuare il pagamento?",
-                ["Sì", "No"],
-                horizontal=True,
-            ) == "Sì"
+        invia_mail = st.radio(
+            "Inviare una mail al cliente per effettuare il pagamento?",
+            ["Sì", "No"],
+            horizontal=True,
+        ) == "Sì"
 
     # ------------------------------------------------------------------ #
     # Gestione / priorità

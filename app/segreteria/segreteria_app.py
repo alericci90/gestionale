@@ -251,6 +251,9 @@ def _pannello_dettaglio(records: list[dict]) -> None:
     with col_i:
         campo_dettaglio("Mail al cliente", _bool_it(det["invia_mail"]))
 
+    if det["note"]:
+        campo_dettaglio("Note del Broker", det["note"])
+
     # Documenti.
     if det["documenti"]:
         st.markdown("**Documenti allegati:**")
@@ -296,7 +299,6 @@ def _pannello_dettaglio(records: list[dict]) -> None:
             assegn_corrente = det["assegnato"] or "— Non assegnata —"
             idx = nomi_operatori.index(assegn_corrente) if assegn_corrente in nomi_operatori else 0
             nuovo_assegn = st.selectbox("Assegna a", nomi_operatori, index=idx)
-        nuove_note = st.text_area("Note", value=det["note"], height=100)
 
         salva = st.form_submit_button("💾 Salva modifiche", type="primary", use_container_width=True)
 
@@ -307,7 +309,6 @@ def _pannello_dettaglio(records: list[dict]) -> None:
                 pratica_service.aggiorna_urgenza(session, pratica_id, _URGENZE[nuova_urgenza])
                 op_id = None if nuovo_assegn == "— Non assegnata —" else id_per_nome[nuovo_assegn]
                 pratica_service.assegna_operatore(session, pratica_id, op_id)
-                pratica_service.aggiorna_note(session, pratica_id, nuove_note)
             st.success("Modifiche salvate.")
             st.rerun()
         except Exception as e:  # pragma: no cover
